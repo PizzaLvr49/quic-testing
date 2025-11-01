@@ -9,6 +9,7 @@ const NUM_MESSAGES: u64 = 10_000_000;
 mod quic;
 
 use quic::*;
+use quinn::{Connection, ConnectionError};
 
 #[tokio::main]
 async fn main() {
