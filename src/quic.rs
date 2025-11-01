@@ -1,5 +1,5 @@
+use anyhow::Result;
 use std::{
-    error::Error,
     io::{Error as IoError, ErrorKind, Result as IoResult},
     net::SocketAddr,
     sync::Arc,
@@ -20,15 +20,14 @@ use quinn::rustls::{
 
 const DATAGRAM_BUFFER_SIZE: usize = 65536;
 
-pub fn generate_cert() -> Result<(CertificateDer<'static>, PrivateKeyDer<'static>), Box<dyn Error>>
-{
+pub fn generate_cert() -> Result<(CertificateDer<'static>, PrivateKeyDer<'static>)> {
     let cert = rcgen::generate_simple_self_signed(vec!["localhost".into()])?;
     let key = PrivatePkcs8KeyDer::from(cert.signing_key.serialize_der());
 
     Ok((CertificateDer::from(cert.cert), PrivateKeyDer::Pkcs8(key)))
 }
 
-pub fn server_config() -> Result<ServerConfig, Box<dyn Error>> {
+pub fn server_config() -> Result<ServerConfig> {
     let (cert, private_key) = generate_cert()?;
     let mut crypto = RustlsServerConfig::builder()
         .with_no_client_auth()
@@ -38,7 +37,7 @@ pub fn server_config() -> Result<ServerConfig, Box<dyn Error>> {
     let mut config = ServerConfig::with_crypto(Arc::new(QuicServerConfig::try_from(crypto)?));
 
     let transport = Arc::get_mut(&mut config.transport)
-        .ok_or("Failed to get mutable reference to transport config")?;
+        .ok_or_else(|| anyhow::anyhow!("Failed to get mutable reference to transport config"))?;
     transport.max_concurrent_uni_streams(0_u8.into());
 
     transport.datagram_receive_buffer_size(Some(DATAGRAM_BUFFER_SIZE));
@@ -47,7 +46,7 @@ pub fn server_config() -> Result<ServerConfig, Box<dyn Error>> {
     Ok(config)
 }
 
-pub fn client_config() -> Result<ClientConfig, Box<dyn Error>> {
+pub fn client_config() -> Result<ClientConfig> {
     let mut crypto = RustlsClientConfig::builder()
         .dangerous()
         .with_custom_certificate_verifier(SkipServerVerification::new())
@@ -131,10 +130,10 @@ pub async fn write_stream(send: &mut SendStream, data: &[u8]) -> IoResult<()> {
     Ok(())
 }
 
-pub fn bind_server(addr: SocketAddr, config: ServerConfig) -> Result<Endpoint, Box<dyn Error>> {
+pub fn bind_server(addr: SocketAddr, config: ServerConfig) -> Result<Endpoint> {
     Ok(Endpoint::server(config, addr)?)
 }
 
-pub fn bind_client(addr: SocketAddr) -> Result<Endpoint, Box<dyn Error>> {
+pub fn bind_client(addr: SocketAddr) -> Result<Endpoint> {
     Ok(Endpoint::client(addr)?)
 }

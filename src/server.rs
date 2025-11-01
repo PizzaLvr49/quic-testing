@@ -1,4 +1,4 @@
-use std::error::Error;
+use anyhow::Result;
 use std::net::SocketAddr;
 
 use quinn::{Connection, ConnectionError, Endpoint};
@@ -23,7 +23,7 @@ impl ServerBuilder {
         }
     }
 
-    pub async fn bind(&mut self) -> Result<ServerHandle, Box<dyn Error>> {
+    pub async fn bind(&mut self) -> Result<ServerHandle> {
         let endpoint = bind_server(self.server_addr, server_config()?)?;
 
         Ok(ServerHandle {
@@ -34,22 +34,27 @@ impl ServerBuilder {
 }
 
 impl ServerHandle {
-    pub async fn run(&mut self) {
-        tokio::spawn(self.accept_connections()).await??;
+    pub async fn run(&mut self) -> Result<()> {
+        self.accept_connections().await
     }
 
-    async fn accept_connections(&mut self) -> Result<(), Box<dyn Error + Send>> {
+    async fn accept_connections(&mut self) -> Result<()> {
         while let Some(conn) = self.endpoint.accept().await {
-            let connection = conn
-                .await
-                .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send>)??;
+            let connection = conn.await?;
+            println!("New connection from: {}", connection.remote_address());
 
-            self.connections.push(connection);
+            self.connections.push(connection.clone());
+
+            tokio::spawn(async move {
+                if let Err(e) = Self::receive_datagrams(connection).await {
+                    eprintln!("Error handling datagrams: {}", e);
+                }
+            });
         }
         Ok(())
     }
 
-    pub async fn receive_datagrams(&self, connection: &Connection) -> Result<(), Box<dyn Error>> {
+    async fn receive_datagrams(connection: Connection) -> Result<()> {
         loop {
             match connection.read_datagram().await {
                 Ok(received_bytes) => {

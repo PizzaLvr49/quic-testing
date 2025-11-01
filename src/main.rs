@@ -1,7 +1,5 @@
-use std::{
-    error::Error,
-    net::{IpAddr, Ipv4Addr, SocketAddr},
-};
+use anyhow::Result;
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 use bincode::{Decode, Encode};
 
@@ -25,13 +23,13 @@ struct Message {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+async fn main() -> Result<()> {
     let mut server = ServerBuilder::new(SERVER_ADDR, SERVER_NAME);
     let client = ClientBuilder::new(CLIENT_ADDR).connect(&server).await?;
 
-    let server = server.bind().await?;
+    let mut server = server.bind().await?;
 
-    tokio::spawn(server.run());
+    tokio::spawn(async move { server.run().await });
 
     tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
 
