@@ -1,7 +1,7 @@
 use anyhow::Result;
 use std::net::SocketAddr;
 
-use quinn::Connection;
+use quinn::{Connection, VarInt};
 
 use crate::{Message, codec::*, quic::*, server::*};
 
@@ -37,5 +37,9 @@ impl ClientHandle {
         let data = encode(message)?;
         self.conn.send_datagram(data.into())?;
         Ok(())
+    }
+
+    pub async fn close_connection(&self, reason: Vec<u8>) {
+        self.conn.close(VarInt::from_u32(0), &reason);
     }
 }
