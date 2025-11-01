@@ -1,12 +1,13 @@
 use anyhow::Result;
 use std::net::SocketAddr;
 
-use quinn::{Connection, VarInt};
+use quinn::{Connection, ConnectionError, VarInt};
 
 use crate::{Message, codec::*, quic::*, server::*};
 
 pub struct ClientBuilder {
     client_addr: SocketAddr,
+    error_handler: Option<fn(ConnectionError)>,
 }
 
 pub struct ClientHandle {
@@ -15,10 +16,18 @@ pub struct ClientHandle {
 
 impl ClientBuilder {
     pub fn new(client_addr: SocketAddr) -> Self {
-        Self { client_addr }
+        Self {
+            client_addr,
+            error_handler: None,
+        }
     }
 
-    pub async fn connect(&self, server: &ServerBuilder) -> Result<ClientHandle> {
+    pub fn set_error_handler(mut self, handler: fn(ConnectionError)) -> Self {
+        self.error_handler = Some(handler);
+        self
+    }
+
+    pub async fn connect(self, server: &ServerBuilder) -> Result<ClientHandle> {
         let mut endpoint = bind_client(self.client_addr)?;
         endpoint.set_default_client_config(client_config()?);
         let conn = endpoint
@@ -28,6 +37,14 @@ impl ClientBuilder {
             "Connected to server {:?} ({})",
             server.server_name, server.server_addr
         );
+
+        if let Some(handler) = self.error_handler {
+            let conn_clone = conn.clone();
+            tokio::spawn(async move {
+                handler(conn_clone.closed().await);
+            });
+        }
+
         Ok(ClientHandle { conn })
     }
 }
@@ -39,7 +56,8 @@ impl ClientHandle {
         Ok(())
     }
 
-    pub async fn close_connection(&self, reason: Vec<u8>) {
-        self.conn.close(VarInt::from_u32(0), &reason);
+    pub async fn close_connection(&self, reason: &[u8]) {
+        // Fix 3: Changed return type to ()
+        self.conn.close(VarInt::from_u32(0), reason);
     }
 }
