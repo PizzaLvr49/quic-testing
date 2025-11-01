@@ -117,6 +117,7 @@ impl ServerCertVerifier for SkipServerVerification {
     }
 }
 
+#[allow(dead_code)]
 pub async fn read_stream(recv: &mut RecvStream, buf: &mut [u8]) -> IoResult<usize> {
     match recv.read(buf).await {
         Ok(Some(n)) => Ok(n),
@@ -125,6 +126,7 @@ pub async fn read_stream(recv: &mut RecvStream, buf: &mut [u8]) -> IoResult<usiz
     }
 }
 
+#[allow(dead_code)]
 pub async fn write_stream(send: &mut SendStream, data: &[u8]) -> IoResult<()> {
     send.write_all(data).await?;
     Ok(())
