@@ -34,7 +34,7 @@ impl ClientBuilder {
             .connect(server.server_addr, server.server_name)?
             .await?;
         println!(
-            "Connected to server {:?} ({})",
+            "[Client] Connected to server {:?} ({})",
             server.server_name, server.server_addr
         );
 
@@ -57,7 +57,6 @@ impl ClientHandle {
     }
 
     pub async fn close_connection(&self, reason: &[u8]) {
-        // Fix 3: Changed return type to ()
         self.conn.close(VarInt::from_u32(0), reason);
     }
 }

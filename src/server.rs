@@ -41,13 +41,16 @@ impl ServerHandle {
     async fn accept_connections(&mut self) -> Result<()> {
         while let Some(conn) = self.endpoint.accept().await {
             let connection = conn.await?;
-            println!("New connection from: {}", connection.remote_address());
+            println!(
+                "[Server] New connection from: {}",
+                connection.remote_address()
+            );
 
             self.connections.push(connection.clone());
 
             tokio::spawn(async move {
                 if let Err(e) = Self::receive_datagrams(connection).await {
-                    eprintln!("Error handling datagrams: {}", e);
+                    eprintln!("[Server] Error handling datagrams: {}", e);
                 }
             });
         }
@@ -60,20 +63,20 @@ impl ServerHandle {
                 Ok(received_bytes) => {
                     let data: Message = decode(&received_bytes)?;
                     println!(
-                        "Received datagram from {}: {:#?}",
+                        "[Server] Received datagram from {}: {:#?}",
                         connection.remote_address(),
                         data,
                     );
                 }
                 Err(ConnectionError::ApplicationClosed(close)) => {
                     println!(
-                        "Connection closed by peer: {:?}",
+                        "[Server] Connection closed by peer: {:?}",
                         String::from_utf8_lossy(&close.reason.to_vec())
                     );
                     break Ok(());
                 }
                 Err(e) => {
-                    eprintln!("Error reading datagram: {}", e);
+                    eprintln!("[Server] Error reading datagram: {}", e);
                     return Err(e.into());
                 }
             }
