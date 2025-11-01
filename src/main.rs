@@ -49,7 +49,7 @@ async fn server() -> Result<(), Box<dyn Error>> {
     while let Some(conn) = endpoint.accept().await {
         let connection = conn.await?;
 
-        receive_datagram(&connection).await?;
+        receive_datagrams(&connection).await?;
     }
     Ok(())
 }
@@ -59,7 +59,7 @@ pub async fn send_unreliable(connection: &Connection) -> Result<(), Box<dyn Erro
     Ok(())
 }
 
-pub async fn receive_datagram(connection: &Connection) -> Result<(), Box<dyn Error>> {
+pub async fn receive_datagrams(connection: &Connection) -> Result<(), Box<dyn Error>> {
     loop {
         match connection.read_datagram().await {
             Ok(received_bytes) => {
