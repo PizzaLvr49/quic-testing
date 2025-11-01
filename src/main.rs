@@ -40,10 +40,10 @@ async fn main() -> Result<()> {
     let client = ClientBuilder::new(CLIENT_ADDR)
         .set_error_handler(|error| match error {
             ConnectionError::LocallyClosed => {
-                println!("Connection closed locally");
+                println!("[Client] Connection closed locally");
             }
             _ => {
-                println!("Connection Error {:?}", error);
+                println!("[Client] Connection Error {:?}", error);
             }
         })
         .connect(&server_builder)
