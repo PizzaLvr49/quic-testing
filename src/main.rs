@@ -35,7 +35,7 @@ async fn main() -> Result<()> {
         }
     });
 
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
 
     let client = ClientBuilder::new(CLIENT_ADDR)
         .set_error_handler(|error| match error {
@@ -49,7 +49,7 @@ async fn main() -> Result<()> {
         .connect(&server_builder)
         .await?;
 
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
 
     client
         .send_unreliable_message(&Message {
@@ -58,11 +58,11 @@ async fn main() -> Result<()> {
         })
         .await?;
 
-    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
 
     client.close_connection(b"Finished Messaging").await;
 
-    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
 
     Ok(())
 }
