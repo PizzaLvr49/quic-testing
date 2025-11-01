@@ -6,7 +6,8 @@ use std::{
 };
 
 use quinn::{
-    ClientConfig, Connection, Endpoint, RecvStream, SendStream, ServerConfig, TransportConfig,
+    ClientConfig, Connection, ConnectionError, Endpoint, RecvStream, SendStream, ServerConfig,
+    TransportConfig,
     crypto::rustls::{QuicClientConfig, QuicServerConfig},
 };
 
@@ -137,23 +138,4 @@ pub fn bind_server(addr: SocketAddr, config: ServerConfig) -> Result<Endpoint, B
 
 pub fn bind_client(addr: SocketAddr) -> Result<Endpoint, Box<dyn Error>> {
     Ok(Endpoint::client(addr)?)
-}
-
-async fn send_unreliable(connection: Connection) -> Result<(), Box<dyn Error>> {
-    connection.send_datagram(b"test".to_vec().into())?;
-    Ok(())
-}
-
-async fn receive_datagram(connection: Connection) -> Result<(), Box<dyn Error>> {
-    loop {
-        match connection.read_datagram().await {
-            Ok(received_bytes) => {
-                println!("request: {:?}", received_bytes);
-            }
-            Err(e) => {
-                eprintln!("Error reading datagram: {}", e);
-                return Err(e.into());
-            }
-        }
-    }
 }
