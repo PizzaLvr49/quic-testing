@@ -1,82 +1,48 @@
-use std::error::Error;
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::{
+    error::Error,
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+};
 
-const SERVER_NAME: &str = "LAN";
-const CLIENT_ADDR: SocketAddr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 168, 4, 134)), 5000);
-const SERVER_ADDR: SocketAddr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 168, 4, 134)), 5001);
-const NUM_MESSAGES: u64 = 10_000_000;
+use bincode::{Decode, Encode};
 
+const SERVER_NAME: &str = "localhost";
+const LOCALHOST: IpAddr = IpAddr::V4(Ipv4Addr::LOCALHOST);
+const CLIENT_ADDR: SocketAddr = SocketAddr::new(LOCALHOST, 5000);
+const SERVER_ADDR: SocketAddr = SocketAddr::new(LOCALHOST, 5001);
+
+mod client;
+mod codec;
 mod quic;
+mod server;
 
-use quic::*;
-use quinn::{Connection, ConnectionError};
+use client::*;
+use server::*;
+
+#[derive(Debug, Encode, Decode)]
+struct Message {
+    id: u32,
+    content: String,
+}
 
 #[tokio::main]
-async fn main() {
-    tokio::spawn(async move {
-        if let Err(e) = server().await {
-            eprintln!("Server error: {}", e);
-        }
-    });
+async fn main() -> Result<(), Box<dyn Error>> {
+    let mut server = ServerBuilder::new(SERVER_ADDR, SERVER_NAME);
+    let client = ClientBuilder::new(CLIENT_ADDR).connect(&server).await?;
+
+    let server = server.bind().await?;
+
+    tokio::spawn(server.run());
 
     tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
 
-    if let Err(e) = client().await {
-        eprintln!("Client error: {}", e);
-    }
+    client
+        .send_unreliable_message(&Message {
+            id: 1,
+            content: "Hello from client".to_string(),
+        })
+        .await?;
 
     tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
-}
-
-async fn client() -> Result<(), Box<dyn Error>> {
-    let mut endpoint = bind_client(CLIENT_ADDR)?;
-    endpoint.set_default_client_config(client_config()?);
-    let connection = endpoint.connect(SERVER_ADDR, SERVER_NAME)?.await?;
-
-    for _ in 0..NUM_MESSAGES {
-        send_unreliable(&connection).await?;
-    }
-
-    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
-    connection.close(0u32.into(), b"done");
 
     Ok(())
-}
-
-async fn server() -> Result<(), Box<dyn Error>> {
-    let endpoint = bind_server(SERVER_ADDR, server_config()?)?;
-
-    while let Some(conn) = endpoint.accept().await {
-        let connection = conn.await?;
-
-        receive_datagrams(&connection).await?;
-    }
-    Ok(())
-}
-
-pub async fn send_unreliable(connection: &Connection) -> Result<(), Box<dyn Error>> {
-    connection.send_datagram(b"hello".to_vec().into())?;
-    Ok(())
-}
-
-pub async fn receive_datagrams(connection: &Connection) -> Result<(), Box<dyn Error>> {
-    loop {
-        match connection.read_datagram().await {
-            Ok(received_bytes) => {
-                let s = String::from_utf8_lossy(&received_bytes);
-                println!("Received datagram: {}", s);
-            }
-            Err(ConnectionError::ApplicationClosed(close)) => {
-                println!(
-                    "Connection closed by peer: {:?}",
-                    String::from_utf8_lossy(&close.reason.to_vec())
-                );
-                break Ok(());
-            }
-            Err(e) => {
-                eprintln!("Error reading datagram: {}", e);
-                return Err(e.into());
-            }
-        }
-    }
 }
