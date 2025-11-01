@@ -24,14 +24,23 @@ struct Message {
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let mut server = ServerBuilder::new(SERVER_ADDR, SERVER_NAME);
-    let client = ClientBuilder::new(CLIENT_ADDR).connect(&server).await?;
+    let mut server_builder = ServerBuilder::new(SERVER_ADDR, SERVER_NAME);
 
-    let mut server = server.bind().await?;
+    let mut server = server_builder.bind().await?;
 
-    tokio::spawn(async move { server.run().await });
+    tokio::spawn(async move {
+        if let Err(e) = server.run().await {
+            eprintln!("Server error: {}", e);
+        }
+    });
 
-    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
+    let client = ClientBuilder::new(CLIENT_ADDR)
+        .connect(&server_builder)
+        .await?;
+
+    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
     client
         .send_unreliable_message(&Message {
@@ -40,7 +49,7 @@ async fn main() -> Result<()> {
         })
         .await?;
 
-    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
 
     Ok(())
 }

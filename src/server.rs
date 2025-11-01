@@ -59,7 +59,11 @@ impl ServerHandle {
             match connection.read_datagram().await {
                 Ok(received_bytes) => {
                     let data: Message = decode(&received_bytes)?;
-                    println!("Received datagram: {:#?}", data);
+                    println!(
+                        "Received datagram from {}: {:#?}",
+                        connection.remote_address(),
+                        data,
+                    );
                 }
                 Err(ConnectionError::ApplicationClosed(close)) => {
                     println!(

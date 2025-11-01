@@ -24,6 +24,10 @@ impl ClientBuilder {
         let conn = endpoint
             .connect(server.server_addr, server.server_name)?
             .await?;
+        println!(
+            "Connected to server {:?} ({})",
+            server.server_name, server.server_addr
+        );
         Ok(ClientHandle { conn })
     }
 }
