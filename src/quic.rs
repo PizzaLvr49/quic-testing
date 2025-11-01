@@ -6,8 +6,7 @@ use std::{
 };
 
 use quinn::{
-    ClientConfig, Connection, ConnectionError, Endpoint, RecvStream, SendStream, ServerConfig,
-    TransportConfig,
+    ClientConfig, Endpoint, RecvStream, SendStream, ServerConfig, TransportConfig,
     crypto::rustls::{QuicClientConfig, QuicServerConfig},
 };
 
